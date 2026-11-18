@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="sr">
   <head>
     <meta charset="utf-8" />
-    <title>Mute Face</title>
+    <title>Једног човека мутирај</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -10,7 +10,7 @@
         --text: #16181d;
         --muted: #646b78;
         --line: #e3e6eb;
-        --accent: #d92d20;
+        --accent: #a81a32;
         --ok: #12805c;
         --warn: #a15c07;
         --chip: #f3f4f6;
@@ -21,7 +21,7 @@
           --text: #eceef2;
           --muted: #9aa1ad;
           --line: #30343c;
-          --accent: #f97066;
+          --accent: #a81a32;
           --ok: #4cc39a;
           --warn: #f0b354;
           --chip: #272a31;
@@ -32,11 +32,33 @@
       }
       body {
         margin: 0;
-        width: 320px;
-        padding: 16px;
+        width: 380px;
+        padding: 18px;
         background: var(--bg);
         color: var(--text);
-        font: 13px/1.45 system-ui, -apple-system, sans-serif;
+        font: 16px/1.45 system-ui, -apple-system, sans-serif;
+      }
+      .lang {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+      }
+      .lang div {
+        display: flex;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .lang button {
+        padding: 3px 12px;
+        border: 0;
+        border-radius: 0;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .lang button[aria-pressed='true'] {
+        background: var(--accent);
+        color: #fff;
       }
       header {
         display: flex;
@@ -44,14 +66,20 @@
         justify-content: space-between;
         gap: 12px;
       }
-      h1 {
+      h1,
+      h2.main {
         margin: 0;
-        font-size: 15px;
+        font-size: 20px;
         font-weight: 650;
+      }
+      h2.main {
+        letter-spacing: normal;
+        text-transform: none;
+        color: var(--text);
       }
       h2 {
         margin: 0 0 6px;
-        font-size: 11px;
+        font-size: 13px;
         font-weight: 600;
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -64,8 +92,8 @@
       }
       .switch {
         position: relative;
-        width: 38px;
-        height: 22px;
+        width: 46px;
+        height: 26px;
         flex: none;
       }
       .switch input {
@@ -88,8 +116,8 @@
         position: absolute;
         top: 3px;
         left: 3px;
-        width: 16px;
-        height: 16px;
+        width: 20px;
+        height: 20px;
         border-radius: 50%;
         background: #fff;
         transition: transform 0.15s;
@@ -98,7 +126,7 @@
         background: var(--accent);
       }
       .switch input:checked + span::after {
-        transform: translateX(16px);
+        transform: translateX(20px);
       }
       .switch input:focus-visible + span {
         outline: 2px solid var(--accent);
@@ -164,7 +192,7 @@
         display: flex;
         justify-content: space-between;
         color: var(--muted);
-        font-size: 11px;
+        font-size: 14px;
       }
       button {
         font: inherit;
@@ -201,22 +229,35 @@
       .row h2 {
         margin: 0;
       }
-      .check {
+      .title {
         display: flex;
         align-items: center;
         gap: 8px;
-        cursor: pointer;
+        margin-bottom: 6px;
       }
-      .check input {
+      .title h2 {
         margin: 0;
-        accent-color: var(--accent);
+      }
+      .info {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border-radius: 50%;
+        font: italic 600 14px/1 Georgia, 'Times New Roman', serif;
+        color: var(--muted);
+      }
+      .info[aria-expanded='true'] {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
       }
       .hint {
         margin: 8px 0 0;
         color: var(--muted);
       }
       code {
-        font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+        font: 14px ui-monospace, SFMono-Regular, Menlo, monospace;
       }
       [hidden] {
         display: none !important;
@@ -224,9 +265,16 @@
     </style>
   </head>
   <body>
+    <div class="lang" data-keep>
+      <div role="group" aria-label="Писмо / Pismo">
+        <button type="button" data-lang="cir" aria-pressed="true" title="Ћирилица">Ћир</button>
+        <button type="button" data-lang="lat" aria-pressed="false" title="Latinica">Lat</button>
+      </div>
+    </div>
+
     <header>
-      <h1>Mute Face</h1>
-      <label class="switch" title="Mute YouTube while a known person is on screen">
+      <h1>Једног човека мутирај</h1>
+      <label class="switch" title="Укључи или искључи мутирање">
         <input id="enabled" type="checkbox" checked />
         <span></span>
       </label>
@@ -234,31 +282,45 @@
 
     <section>
       <div class="row">
-        <h2>Photos</h2>
-        <button id="rescan" type="button">Rescan</button>
+        <h2>Слике</h2>
+        <button id="rescan" type="button">Освежи</button>
       </div>
-      <p id="summary">Loading…</p>
+      <p id="summary">Учитавам…</p>
       <ul id="people"></ul>
       <ul id="skipped"></ul>
       <p class="hint" id="hint" hidden>
-        Put a few clear photos of the person in <code>images/person/</code> inside the extension folder, then press
-        Rescan.
+        Додај слике особе у <code>images/person/</code>, па кликни Освежи.
       </p>
     </section>
 
     <section>
-      <h2>Matching</h2>
-      <input id="threshold" type="range" step="0.01" aria-label="How strictly a face must match" />
-      <div class="ends"><span>Stricter</span><span>Looser</span></div>
-      <p class="hint">
-        Mutes for other people? Move toward Stricter. Misses the person? Move toward Looser or add more photos.
+      <div class="title">
+        <h2>Препознавање</h2>
+        <button
+          class="info"
+          id="thresholdInfo"
+          type="button"
+          aria-label="Објашњење"
+          aria-expanded="false"
+          aria-controls="thresholdHint"
+        >
+          i
+        </button>
+      </div>
+      <p class="hint" id="thresholdHint" hidden>
+        Да ли екстензија мутира погрешну особу? Помери клизач ка опцији ”Строго”
       </p>
-    </section>
+      <p class="hint" id="thresholdHint" hidden>
+        Да ли екстензија не мутира особз? Помери клизач ка опцији ”Блаже”
+      </p>
+      <input id="threshold" type="range" step="0.01" aria-label="Колико лице мора да личи" />
+      <div class="ends"><span>Строго</span><span>Блаже</span></div>
+      А    </section>
 
     <section>
       <div class="row">
-        <h2>Names on screen</h2>
-        <label class="switch" title="Also mute while one of these names is written in the video">
+        <h2 class="main">Мутирај текст</h2>
+        <label class="switch" title="Мутирај и кад се име појави у видеу">
           <input id="textEnabled" type="checkbox" />
           <span></span>
         </label>
@@ -266,29 +328,13 @@
       <textarea
         id="names"
         rows="2"
-        placeholder="John Smith&#10;Александар Нешто"
-        aria-label="Names to watch for, one per line"
+        placeholder="Александар Нешто&#10;John Smith"
+        aria-label="Имена, једно по реду"
       ></textarea>
-      <p class="hint">
-        One name per line, in Latin or Cyrillic letters. Also mutes while a name is written in the video, such as a
-        caption under the speaker.
-      </p>
-      <p class="hint" id="nameImagesSummary">
-        Or put a picture of the name in the <code>names/</code> folder and press Rescan.
-      </p>
+      <p class="hint">Једно име по реду. Мутира док је натпис исписан у видеу.</p>
+      <p class="hint" id="nameImagesHint">Или додај слику имена у <code>names/</code>, па кликни Освежи.</p>
+      <p class="hint" id="nameImagesStatus" hidden></p>
       <ul id="nameImages"></ul>
-    </section>
-
-    <section>
-      <h2>Log</h2>
-      <label class="check">
-        <input id="verbose" type="checkbox" />
-        <span>Log every check, not only mutes and unmutes</span>
-      </label>
-      <p class="hint">
-        The log is in the YouTube tab's console: press <code>Cmd+Option+J</code> and type <code>mute-face</code> in the
-        filter box.
-      </p>
     </section>
 
     <script type="module" src="popup.js"></script>
