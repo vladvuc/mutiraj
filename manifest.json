@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Mute Face",
+  "version": "0.1.0",
+  "description": "Mutes YouTube while a person from the images/ folder, or a name you choose, is on screen. Runs entirely on your machine.",
+  "minimum_chrome_version": "116",
+  "permissions": ["offscreen", "storage"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*"],
+      "js": ["src/player-bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*"],
+      "js": ["src/content-loader.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content.js", "src/lib/*.js"],
+      "matches": ["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*"]
+    }
+  ],
+  "action": {
+    "default_title": "Mute Face",
+    "default_popup": "src/popup.html"
+  }
+}

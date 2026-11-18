@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mute Face</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --text: #16181d;
+        --muted: #646b78;
+        --line: #e3e6eb;
+        --accent: #d92d20;
+        --ok: #12805c;
+        --warn: #a15c07;
+        --chip: #f3f4f6;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1b1d22;
+          --text: #eceef2;
+          --muted: #9aa1ad;
+          --line: #30343c;
+          --accent: #f97066;
+          --ok: #4cc39a;
+          --warn: #f0b354;
+          --chip: #272a31;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        width: 320px;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.45 system-ui, -apple-system, sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 650;
+      }
+      h2 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      section {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+      .switch {
+        position: relative;
+        width: 38px;
+        height: 22px;
+        flex: none;
+      }
+      .switch input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .switch span {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: var(--line);
+        transition: background 0.15s;
+        pointer-events: none;
+      }
+      .switch span::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.15s;
+      }
+      .switch input:checked + span {
+        background: var(--accent);
+      }
+      .switch input:checked + span::after {
+        transform: translateX(16px);
+      }
+      .switch input:focus-visible + span {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      #summary {
+        margin: 0;
+      }
+      #summary.ok {
+        color: var(--ok);
+      }
+      #summary.warn {
+        color: var(--warn);
+      }
+      ul {
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      #people li {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 10px;
+        margin-top: 4px;
+        border-radius: 6px;
+        background: var(--chip);
+      }
+      #people li span:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 550;
+      }
+      #people li span:last-child {
+        flex: none;
+        color: var(--muted);
+      }
+      #nameImages li {
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+      }
+      #nameImages li.problem {
+        color: var(--muted);
+      }
+      #skipped li {
+        margin-top: 4px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      input[type='range'] {
+        width: 100%;
+        margin: 8px 0 2px;
+        accent-color: var(--accent);
+      }
+      .ends {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: transparent;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--chip);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      textarea {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        padding: 6px 8px;
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        resize: vertical;
+      }
+      textarea:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .row h2 {
+        margin: 0;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+      .check input {
+        margin: 0;
+        accent-color: var(--accent);
+      }
+      .hint {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+      code {
+        font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Mute Face</h1>
+      <label class="switch" title="Mute YouTube while a known person is on screen">
+        <input id="enabled" type="checkbox" checked />
+        <span></span>
+      </label>
+    </header>
+
+    <section>
+      <div class="row">
+        <h2>Photos</h2>
+        <button id="rescan" type="button">Rescan</button>
+      </div>
+      <p id="summary">Loading…</p>
+      <ul id="people"></ul>
+      <ul id="skipped"></ul>
+      <p class="hint" id="hint" hidden>
+        Put a few clear photos of the person in <code>images/person/</code> inside the extension folder, then press
+        Rescan.
+      </p>
+    </section>
+
+    <section>
+      <h2>Matching</h2>
+      <input id="threshold" type="range" step="0.01" aria-label="How strictly a face must match" />
+      <div class="ends"><span>Stricter</span><span>Looser</span></div>
+      <p class="hint">
+        Mutes for other people? Move toward Stricter. Misses the person? Move toward Looser or add more photos.
+      </p>
+    </section>
+
+    <section>
+      <div class="row">
+        <h2>Names on screen</h2>
+        <label class="switch" title="Also mute while one of these names is written in the video">
+          <input id="textEnabled" type="checkbox" />
+          <span></span>
+        </label>
+      </div>
+      <textarea
+        id="names"
+        rows="2"
+        placeholder="John Smith&#10;Александар Нешто"
+        aria-label="Names to watch for, one per line"
+      ></textarea>
+      <p class="hint">
+        One name per line, in Latin or Cyrillic letters. Also mutes while a name is written in the video, such as a
+        caption under the speaker.
+      </p>
+      <p class="hint" id="nameImagesSummary">
+        Or put a picture of the name in the <code>names/</code> folder and press Rescan.
+      </p>
+      <ul id="nameImages"></ul>
+    </section>
+
+    <section>
+      <h2>Log</h2>
+      <label class="check">
+        <input id="verbose" type="checkbox" />
+        <span>Log every check, not only mutes and unmutes</span>
+      </label>
+      <p class="hint">
+        The log is in the YouTube tab's console: press <code>Cmd+Option+J</code> and type <code>mute-face</code> in the
+        filter box.
+      </p>
+    </section>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
