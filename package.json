@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
+    "readme": "node scripts/readme-latin.mjs",
     "test": "node --test \"tests/*.test.js\""
   },
   "devDependencies": {

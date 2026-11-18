@@ -18,9 +18,9 @@ const ENGINE_RETRY_MS = 2000;
 
 // Reading text is much slower than finding faces, so it runs less often and on
 // a sharper frame (small caption text needs the pixels).
-const TEXT_INTERVAL_MS = 1000;
+const TEXT_INTERVAL_MS = 300; // with the time a read takes, the mute lands about half a second after the text appears
 const MAX_TEXT_FRAME_WIDTH = 1280;
-const TEXT_MISSES_TO_DROP = 2; // reads in a row without the name before it counts as gone
+const TEXT_MISSES_TO_DROP = 3; // reads in a row without the name before it counts as gone (about a second)
 const TEXT_STALE_MS = 8000; // forget a name if text reading has stopped answering
 
 const settings = { enabled: true, threshold: DEFAULT_THRESHOLD, textEnabled: false, names: [], latin: false };
@@ -35,6 +35,7 @@ let lastEngineRequest = 0;
 let watched = null; // the <video> we have listeners on
 let mutedByUs = false; // true only while the sound is off because we turned it off
 let nameSeen = null; // {label, at, misses}: a watched name currently written on screen
+let lastFaces = []; // what the latest face check found
 let notice = null; // {host, box, what}: the note shown on the video while it is muted
 
 // --- settings ----------------------------------------------------------------
@@ -99,6 +100,7 @@ function release() {
   unmute();
   tracker.reset();
   nameSeen = null;
+  lastFaces = [];
 }
 
 function onVolumeChange() {
@@ -252,7 +254,10 @@ async function readNames() {
 
     const name = findName(result.text, settings.names);
     if (name) {
+      const appeared = !nameSeen;
       nameSeen = { label: name.label, at: Date.now(), misses: 0 };
+      // Mute straight away; do not wait for the next face check to notice the name.
+      if (appeared && settings.enabled && !document.hidden) decide(video, lastFaces);
     } else if (nameSeen) {
       nameSeen.misses += 1;
       if (nameSeen.misses >= TEXT_MISSES_TO_DROP) nameSeen = null;
@@ -263,6 +268,13 @@ async function readNames() {
 }
 
 // --- recognising faces, and deciding -----------------------------------------
+
+/** Mute or unmute, going by the faces in the frame and the name on screen. */
+function decide(video, faces) {
+  const { action, found } = tracker.scan(faces, settings.threshold, currentName());
+  if (action === 'mute') mute(video, found);
+  else if (action === 'unmute') unmute();
+}
 
 async function scan() {
   if (orphaned()) return;
@@ -291,9 +303,8 @@ async function scan() {
     // The answer is about a frame from a moment ago; ignore it if things changed since.
     if (!settings.enabled || document.hidden || video !== watched || !video.isConnected) return;
 
-    const { action, found } = tracker.scan(result.faces, settings.threshold, currentName());
-    if (action === 'mute') mute(video, found);
-    else if (action === 'unmute') unmute();
+    lastFaces = result.faces;
+    decide(video, lastFaces);
   } finally {
     busy = false;
   }

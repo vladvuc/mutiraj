@@ -207,12 +207,14 @@ function loadReader() {
 //
 //   - it is white: everything that is not white is wiped out, which leaves the
 //     lettering as dark letters on a white page;
-//   - it stays put while the picture behind it changes: white that was not also
-//     white at the previous check is wiped out too, which removes bright parts
-//     of the picture that happen to touch the letters.
+//   - it stays put while the picture behind it changes: about once a second the
+//     frame is read again keeping only white that was also white a moment
+//     earlier, which removes bright parts of the picture that touch the letters.
 const WHITE = 200; // of 255: red, green and blue all at least this bright counts as white
 const SMALL_FRAME_WIDTH = 900; // frames narrower than this are doubled, so the letters are large enough
 const STEADY_MAX_AGE_MS = 3000; // an older check says nothing about what is on screen now
+const STEADY_GAP_MS = 800; // how far back to compare, so the picture has had time to change
+const STEADY_EVERY_MS = 900; // the steady reading is extra work; once a second is enough
 const STEADY_MIN_CHANGE = 0.002; // share of the frame that must have changed for a second reading to be worth it
 
 /** Which pixels of a picture are white. Small pictures are doubled first. */
@@ -235,23 +237,30 @@ function whitePixels(picture) {
   return { width, height, white };
 }
 
-/** A page for the reader: black where the picture was white, white everywhere else. */
+/**
+ * A page for the reader: black where the picture was white, white everywhere else.
+ *
+ * The page is handed over as a ready-made image file (PBM, one bit per pixel),
+ * not as a canvas. The reader would have to turn a canvas into a file first,
+ * and in this hidden page the browser puts that off for a full second.
+ */
 function asDarkLetters({ width, height, white }) {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  const image = context.createImageData(width, height);
-  for (let i = 0; i < white.length; i++) {
-    const p = i * 4;
-    image.data[p] = image.data[p + 1] = image.data[p + 2] = white[i] ? 0 : 255;
-    image.data[p + 3] = 255;
+  const header = new TextEncoder().encode(`P4\n${width} ${height}\n`);
+  const rowBytes = Math.ceil(width / 8);
+  const file = new Uint8Array(header.length + rowBytes * height);
+  file.set(header);
+  let i = 0;
+  for (let y = 0; y < height; y++) {
+    const row = header.length + y * rowBytes;
+    for (let x = 0; x < width; x++, i++) {
+      if (white[i]) file[row + (x >> 3)] |= 0x80 >> (x & 7); // a set bit is black ink
+    }
   }
-  context.putImageData(image, 0, 0);
-  return canvas;
+  return new Blob([file], { type: 'image/x-portable-bitmap' });
 }
 
-const lastWhite = new Map(); // viewer -> {at, width, height, white}: what was white at that viewer's previous check
+// What was white at each viewer's recent checks, oldest first, and when the steady reading last ran.
+const recentWhite = new Map(); // viewer -> {checks: {at, width, height, white}[], steadyAt}
 
 /**
  * @param {string} imageDataUrl the video frame
@@ -264,11 +273,20 @@ async function readText(imageDataUrl, viewer) {
   const pages = [asDarkLetters(now)];
 
   const at = Date.now();
-  for (const [key, seen] of lastWhite) if (at - seen.at > STEADY_MAX_AGE_MS) lastWhite.delete(key);
-  const before = lastWhite.get(viewer);
-  lastWhite.set(viewer, { at, ...now });
+  for (const [key, memory] of recentWhite) {
+    if (at - memory.checks.at(-1).at > STEADY_MAX_AGE_MS) recentWhite.delete(key);
+  }
+  const memory = recentWhite.get(viewer) ?? { checks: [], steadyAt: 0 };
+  recentWhite.set(viewer, memory);
+  memory.checks = memory.checks.filter(
+    (check) => at - check.at <= STEADY_MAX_AGE_MS && check.width === now.width && check.height === now.height,
+  );
+  // Compare with a check from long enough ago for the picture to have changed.
+  const before = memory.checks.findLast((check) => at - check.at >= STEADY_GAP_MS);
+  if (before) memory.checks = memory.checks.slice(memory.checks.indexOf(before));
+  memory.checks.push({ at, ...now });
 
-  if (before && before.width === now.width && before.height === now.height) {
+  if (before && at - memory.steadyAt >= STEADY_EVERY_MS) {
     const steady = new Uint8Array(now.white.length);
     let gone = 0;
     for (let i = 0; i < steady.length; i++) {
@@ -276,7 +294,10 @@ async function readText(imageDataUrl, viewer) {
       else if (now.white[i]) gone += 1;
     }
     // In a still picture nothing drops out, and the second reading would say the same as the first.
-    if (gone > steady.length * STEADY_MIN_CHANGE) pages.push(asDarkLetters({ ...now, white: steady }));
+    if (gone > steady.length * STEADY_MIN_CHANGE) {
+      pages.push(asDarkLetters({ ...now, white: steady }));
+      memory.steadyAt = at;
+    }
   }
 
   const texts = [];
@@ -315,7 +336,7 @@ async function readNameImages(files) {
       // dark text on a light page. The reading the reader is surest of is kept.
       let names = [];
       let surest = -1;
-      for (const picture of [asDarkLetters(whitePixels(canvas)), canvas]) {
+      for (const picture of [asDarkLetters(whitePixels(canvas)), canvas.toDataURL('image/png')]) {
         const { data } = await worker.recognize(picture);
         // Each line of text in the image is one name.
         const lines = (data.text ?? '')

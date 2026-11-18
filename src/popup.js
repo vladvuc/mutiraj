@@ -182,7 +182,8 @@ async function syncNameImages({ force = false } = {}) {
   }
   await chrome.storage.local.set({
     nameImages: results,
-    nameImagesSignature: signature,
+    // A picture that could not be read is tried again the next time the popup opens.
+    nameImagesSignature: results.some((result) => result.problem) ? null : signature,
     imageNames: results.flatMap((result) => result.names),
   });
   renderNameImages(results);
