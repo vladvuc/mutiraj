@@ -24,7 +24,7 @@ const TEXT_MISSES_TO_DROP = 2; // reads in a row without the name before it coun
 const TEXT_STALE_MS = 8000; // forget a name if text reading has stopped answering
 
 const settings = { enabled: true, threshold: DEFAULT_THRESHOLD, textEnabled: false, names: [], latin: false };
-const nameSources = { typed: '', fromImages: [] }; // typed in the popup, and read from the images in names/
+const nameSources = { typed: '', fromImages: [] }; // typed in the popup, and read from pictures of text
 const tracker = createTracker();
 const canvas = document.createElement('canvas');
 const context = canvas.getContext('2d');
@@ -35,7 +35,7 @@ let lastEngineRequest = 0;
 let watched = null; // the <video> we have listeners on
 let mutedByUs = false; // true only while the sound is off because we turned it off
 let nameSeen = null; // {label, at, misses}: a watched name currently written on screen
-let notice = null; // {host, box, name}: the note shown on the video while it is muted
+let notice = null; // {host, box, what}: the note shown on the video while it is muted
 
 // --- settings ----------------------------------------------------------------
 
@@ -51,7 +51,7 @@ function applySettings(values) {
   if ('imageNames' in values) nameSources.fromImages = values.imageNames ?? [];
   if ('lang' in values) {
     settings.latin = values.lang === 'lat';
-    if (notice) notice.box.textContent = noticeText(notice.name);
+    if (notice) notice.box.textContent = noticeText(notice.what);
   }
   settings.names = parseNames(nameSources.typed, nameSources.fromImages);
   if (!watchingNames()) nameSeen = null;
@@ -84,7 +84,7 @@ function mute(video, found) {
   if (video.muted) return;
   mutedByUs = true;
   setMuted(video, true);
-  showNotice(video, found.name);
+  showNotice(video, found.why === 'name' ? 'текст' : 'особа');
 }
 
 function unmute() {
@@ -168,11 +168,13 @@ window.addEventListener('pagehide', () => release());
 
 // --- the on-video notice -----------------------------------------------------
 
-function noticeText(name) {
-  return `${settings.latin ? toLatin('Мутирано') : 'Мутирано'}: ${name}`;
+/** @param {'особа' | 'текст'} what whether a face or a written name caused the mute */
+function noticeText(what) {
+  const text = `Мутирано: ${what}`;
+  return settings.latin ? toLatin(text) : text;
 }
 
-function showNotice(video, name) {
+function showNotice(video, what) {
   hideNotice();
   const host = document.createElement('div');
   host.style.cssText =
@@ -182,10 +184,10 @@ function showNotice(video, name) {
   box.style.cssText =
     'font:500 16px/1.3 system-ui,-apple-system,sans-serif;color:#fff;background:rgba(15,15,15,.82);' +
     'padding:10px 18px;border-radius:999px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4);';
-  box.textContent = noticeText(name);
+  box.textContent = noticeText(what);
   shadow.append(box);
   (video.closest('.html5-video-player') ?? video.parentElement ?? document.body).append(host);
-  notice = { host, box, name };
+  notice = { host, box, what };
 }
 
 function hideNotice() {

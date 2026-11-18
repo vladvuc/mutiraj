@@ -9,7 +9,7 @@
 import * as faceapi from '../vendor/face-api/face-api.esm.js';
 import Tesseract from '../vendor/tesseract/tesseract.esm.min.js';
 import { closestPerson } from './lib/match.js';
-import { photosSignature } from './lib/photos.js';
+import { photosSignature, TEXT_IMAGES_FOLDER } from './lib/photos.js';
 
 // Root-relative on purpose: face-api's URL handling breaks chrome-extension:// URLs.
 const MODEL_URL = '/vendor/face-api/model';
@@ -200,14 +200,95 @@ function loadReader() {
   return reader;
 }
 
-async function readText(imageDataUrl) {
+// The text to catch is white lettering laid over the moving picture, whose
+// colours keep changing behind it. Read as it is, that picture confuses the
+// reader: it returns scraps of letters and drops words. Two things set the
+// lettering apart from the picture, and both are used:
+//
+//   - it is white: everything that is not white is wiped out, which leaves the
+//     lettering as dark letters on a white page;
+//   - it stays put while the picture behind it changes: white that was not also
+//     white at the previous check is wiped out too, which removes bright parts
+//     of the picture that happen to touch the letters.
+const WHITE = 200; // of 255: red, green and blue all at least this bright counts as white
+const SMALL_FRAME_WIDTH = 900; // frames narrower than this are doubled, so the letters are large enough
+const STEADY_MAX_AGE_MS = 3000; // an older check says nothing about what is on screen now
+const STEADY_MIN_CHANGE = 0.002; // share of the frame that must have changed for a second reading to be worth it
+
+/** Which pixels of a picture are white. Small pictures are doubled first. */
+function whitePixels(picture) {
+  const scale = picture.width < SMALL_FRAME_WIDTH ? 2 : 1;
+  const width = picture.width * scale;
+  const height = picture.height * scale;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(picture, 0, 0, width, height);
+
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const white = new Uint8Array(width * height);
+  for (let i = 0; i < white.length; i++) {
+    const p = i * 4;
+    if (pixels[p] >= WHITE && pixels[p + 1] >= WHITE && pixels[p + 2] >= WHITE) white[i] = 1;
+  }
+  return { width, height, white };
+}
+
+/** A page for the reader: black where the picture was white, white everywhere else. */
+function asDarkLetters({ width, height, white }) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(width, height);
+  for (let i = 0; i < white.length; i++) {
+    const p = i * 4;
+    image.data[p] = image.data[p + 1] = image.data[p + 2] = white[i] ? 0 : 255;
+    image.data[p + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+  return canvas;
+}
+
+const lastWhite = new Map(); // viewer -> {at, width, height, white}: what was white at that viewer's previous check
+
+/**
+ * @param {string} imageDataUrl the video frame
+ * @param {string} viewer which tab the frame is from, so frames of different videos are never compared
+ */
+async function readText(imageDataUrl, viewer) {
   const worker = await loadReader();
-  const { data } = await worker.recognize(imageDataUrl);
-  return { text: data.text ?? '' };
+  const frame = await toCanvas(await (await fetch(imageDataUrl)).blob());
+  const now = whitePixels(frame);
+  const pages = [asDarkLetters(now)];
+
+  const at = Date.now();
+  for (const [key, seen] of lastWhite) if (at - seen.at > STEADY_MAX_AGE_MS) lastWhite.delete(key);
+  const before = lastWhite.get(viewer);
+  lastWhite.set(viewer, { at, ...now });
+
+  if (before && before.width === now.width && before.height === now.height) {
+    const steady = new Uint8Array(now.white.length);
+    let gone = 0;
+    for (let i = 0; i < steady.length; i++) {
+      if (now.white[i] && before.white[i]) steady[i] = 1;
+      else if (now.white[i]) gone += 1;
+    }
+    // In a still picture nothing drops out, and the second reading would say the same as the first.
+    if (gone > steady.length * STEADY_MIN_CHANGE) pages.push(asDarkLetters({ ...now, white: steady }));
+  }
+
+  const texts = [];
+  for (const page of pages) {
+    const { data } = await worker.recognize(page);
+    texts.push(data.text ?? '');
+  }
+  return { text: texts.join('\n') };
 }
 
 /**
- * Read the names written in the images in names/.
+ * Read the names written in the images in the text-images folder.
  * @param {{name: string}[]} files list from the popup
  * @returns {Promise<{file: string, names: string[], problem?: string}[]>}
  */
@@ -220,7 +301,7 @@ async function readNameImages(files) {
       continue;
     }
     try {
-      const response = await fetch(`/names/${encodeURIComponent(file.name)}`);
+      const response = await fetch(`/${TEXT_IMAGES_FOLDER}/${encodeURIComponent(file.name)}`);
       const original = await toCanvas(await response.blob(), MAX_PHOTO_SIDE);
       // A tight crop of a caption is only a few dozen pixels tall, too small to read well.
       const scale = Math.min(4, Math.max(1, SMALL_IMAGE_HEIGHT / original.height));
@@ -229,12 +310,23 @@ async function readNameImages(files) {
       canvas.height = Math.round(original.height * scale);
       canvas.getContext('2d').drawImage(original, 0, 0, canvas.width, canvas.height);
 
-      const { data } = await worker.recognize(canvas);
-      // Each line of text in the image is one name.
-      const names = (data.text ?? '')
-        .split('\n')
-        .map((line) => line.trim().replace(/\s+/g, ' '))
-        .filter((line) => /\p{L}{3}/u.test(line));
+      // A picture of a caption has the video behind the letters, like a frame does,
+      // so it is read the same way. It is also read as it is, in case it is plain
+      // dark text on a light page. The reading the reader is surest of is kept.
+      let names = [];
+      let surest = -1;
+      for (const picture of [asDarkLetters(whitePixels(canvas)), canvas]) {
+        const { data } = await worker.recognize(picture);
+        // Each line of text in the image is one name.
+        const lines = (data.text ?? '')
+          .split('\n')
+          .map((line) => line.trim().replace(/\s+/g, ' '))
+          .filter((line) => /\p{L}{3}/u.test(line));
+        if (lines.length > 0 && data.confidence > surest) {
+          names = lines;
+          surest = data.confidence;
+        }
+      }
       results.push(names.length > 0 ? { file: file.name, names } : { file: file.name, names, problem: 'текст није нађен' });
     } catch {
       results.push({ file: file.name, names: [], problem: 'не може да се отвори' });
@@ -243,7 +335,7 @@ async function readNameImages(files) {
   return results;
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.target !== 'engine') return undefined;
 
   const reply = (work) => {
@@ -254,7 +346,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   };
 
   if (message.type === 'detect') return reply(() => detect(message.image));
-  if (message.type === 'read-text') return reply(() => readText(message.image));
+  if (message.type === 'read-text') {
+    return reply(() => readText(message.image, `${sender.tab?.id ?? 'page'}:${sender.frameId ?? 0}`));
+  }
   if (message.type === 'read-name-images') return reply(() => readNameImages(message.files));
   if (message.type === 'status') return reply(status);
   if (message.type === 'rescan') return reply(() => rescan(message.photos).then(status));

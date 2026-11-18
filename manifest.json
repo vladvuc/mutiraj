@@ -1,42 +1,58 @@
 {
-  "manifest_version": 3,
-  "name": "Једног човека мутирај",
-  "version": "0.1.0",
-  "description": "Мутира YouTube док је изабрано лице или име на екрану. Ништа не напушта твој рачунар.",
-  "minimum_chrome_version": "116",
-  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
-  "permissions": ["offscreen", "storage"],
-  "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
-  },
-  "background": {
-    "service_worker": "src/background.js",
-    "type": "module"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*"],
-      "js": ["src/player-bridge.js"],
-      "run_at": "document_start",
-      "all_frames": true,
-      "world": "MAIN"
-    },
-    {
-      "matches": ["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*"],
-      "js": ["src/content-loader.js"],
-      "run_at": "document_idle",
-      "all_frames": true
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["src/content.js", "src/lib/*.js"],
-      "matches": ["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*"]
-    }
-  ],
-  "action": {
-    "default_title": "Једног човека мутирај",
-    "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
-    "default_popup": "src/popup.html"
-  }
+	"manifest_version": 3,
+	"name": "Мутирај особу",
+	"version": "0.1.0",
+	"description": "Мутира YouTube док је изабрано лице или име на екрану. Ништа не напушта твој рачунар.",
+	"minimum_chrome_version": "116",
+	"icons": {
+		"16": "icons/icon-16.png",
+		"32": "icons/icon-32.png",
+		"48": "icons/icon-48.png",
+		"128": "icons/icon-128.png"
+	},
+	"permissions": ["offscreen", "storage"],
+	"content_security_policy": {
+		"extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+	},
+	"background": {
+		"service_worker": "src/background.js",
+		"type": "module"
+	},
+	"content_scripts": [
+		{
+			"matches": [
+				"https://*.youtube.com/*",
+				"https://*.youtube-nocookie.com/*"
+			],
+			"js": ["src/player-bridge.js"],
+			"run_at": "document_start",
+			"all_frames": true,
+			"world": "MAIN"
+		},
+		{
+			"matches": [
+				"https://*.youtube.com/*",
+				"https://*.youtube-nocookie.com/*"
+			],
+			"js": ["src/content-loader.js"],
+			"run_at": "document_idle",
+			"all_frames": true
+		}
+	],
+	"web_accessible_resources": [
+		{
+			"resources": ["src/content.js", "src/lib/*.js"],
+			"matches": ["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*"]
+		}
+	],
+	"action": {
+		"default_title": "Мутирај особу",
+		"default_icon": {
+			"16": "icons/icon-16.png",
+			"32": "icons/icon-32.png",
+			"48": "icons/icon-48.png",
+			"128": "icons/icon-128.png"
+		},
+		"default_popup": "src/popup.html"
+	}
 }

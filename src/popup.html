@@ -2,7 +2,7 @@
 <html lang="sr">
   <head>
     <meta charset="utf-8" />
-    <title>Једног човека мутирај</title>
+    <title>Мутирај особу</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -238,6 +238,28 @@
       .title h2 {
         margin: 0;
       }
+      .row .title {
+        margin: 0;
+      }
+      .callout {
+        margin: 8px 0;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--accent);
+        border-radius: 8px;
+        background: var(--chip);
+      }
+      .callout .hint {
+        margin: 0;
+        color: var(--text);
+        font-size: 14px;
+      }
+      .callout .hint + .hint {
+        margin-top: 8px;
+      }
+      .callout code {
+        white-space: nowrap; /* keep a folder name in one piece */
+      }
       .info {
         flex: none;
         width: 22px;
@@ -273,7 +295,7 @@
     </div>
 
     <header>
-      <h1>Једног човека мутирај</h1>
+      <h1>Мутирај особу</h1>
       <label class="switch" title="Укључи или искључи мутирање">
         <input id="enabled" type="checkbox" checked />
         <span></span>
@@ -282,8 +304,26 @@
 
     <section>
       <div class="row">
-        <h2>Слике</h2>
+        <div class="title">
+          <h2>Слике</h2>
+          <button
+            class="info"
+            id="photosInfo"
+            type="button"
+            aria-label="Објашњење"
+            aria-expanded="false"
+            aria-controls="photosHint"
+          >
+            i
+          </button>
+        </div>
         <button id="rescan" type="button">Освежи</button>
+      </div>
+      <div class="callout" id="photosHint" hidden>
+        <p class="hint">
+          Стави неколико јасних слика особе у фолдер <code>images/person/</code> и кликни Освежи.
+        </p>
+        <p class="hint">Најбоље раде 3 до 10 слика, из различитих углова.</p>
       </div>
       <p id="summary">Учитавам…</p>
       <ul id="people"></ul>
@@ -307,23 +347,42 @@
           i
         </button>
       </div>
-      <p class="hint" id="thresholdHint" hidden>
-        Да ли екстензија мутира погрешну особу? Помери клизач ка опцији ”Строго”
-      </p>
-      <p class="hint" id="thresholdHint" hidden>
-        Да ли екстензија не мутира особз? Помери клизач ка опцији ”Блаже”
-      </p>
+      <div class="callout" id="thresholdHint" hidden>
+        <p class="hint">Да ли екстензија мутира погрешну особу? Помери клизач ка опцији ”Строго”</p>
+        <p class="hint">Да ли екстензија не мутира особу? Помери клизач ка опцији ”Блаже”</p>
+      </div>
       <input id="threshold" type="range" step="0.01" aria-label="Колико лице мора да личи" />
       <div class="ends"><span>Строго</span><span>Блаже</span></div>
-      А    </section>
+    </section>
 
     <section>
       <div class="row">
-        <h2 class="main">Мутирај текст</h2>
+        <div class="title">
+          <h2 class="main">Мутирај текст</h2>
+          <button
+            class="info"
+            id="textInfo"
+            type="button"
+            aria-label="Објашњење"
+            aria-expanded="false"
+            aria-controls="textHint"
+          >
+            i
+          </button>
+        </div>
         <label class="switch" title="Мутирај и кад се име појави у видеу">
           <input id="textEnabled" type="checkbox" />
           <span></span>
         </label>
+      </div>
+      <div class="callout" id="textHint" hidden>
+        <p class="hint">
+          Текст не мораш да куцаш, довољна је и његова слика. Стави слику текста, на пример исечак екрана са
+          натписом, у фолдер <code>images/text/</code> и кликни Освежи.
+        </p>
+        <p class="hint">
+          Екстензија сама прочита текст са слике и мутира видео кад се он појави. Испод поља пише шта је прочитала.
+        </p>
       </div>
       <textarea
         id="names"
@@ -332,7 +391,6 @@
         aria-label="Имена, једно по реду"
       ></textarea>
       <p class="hint">Једно име по реду. Мутира док је натпис исписан у видеу.</p>
-      <p class="hint" id="nameImagesHint">Или додај слику имена у <code>names/</code>, па кликни Освежи.</p>
       <p class="hint" id="nameImagesStatus" hidden></p>
       <ul id="nameImages"></ul>
     </section>

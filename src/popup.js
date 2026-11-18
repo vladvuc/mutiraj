@@ -14,7 +14,6 @@ const rescan = $('rescan');
 const textEnabled = $('textEnabled');
 const names = $('names');
 const nameImages = $('nameImages');
-const nameImagesHint = $('nameImagesHint');
 const nameImagesStatus = $('nameImagesStatus');
 const languageButtons = [...document.querySelectorAll('[data-lang]')];
 
@@ -141,9 +140,8 @@ async function askEngine(message) {
 
 // --- names read from images ---------------------------------------------------
 
-/** The line above the list of names read from pictures; with no text, the hint is shown in its place. */
+/** The line above the list of names read from pictures; hidden when there is nothing to say. */
 function setNameImagesStatus(text) {
-  nameImagesHint.hidden = Boolean(text);
   nameImagesStatus.hidden = !text;
   if (text) show(nameImagesStatus, () => t(text));
 }
@@ -163,7 +161,7 @@ function renderNameImages(results) {
   }
 }
 
-/** Read the names in the names/ folder, unless nothing there has changed since last time. */
+/** Read the names in the text-images folder, unless nothing there has changed since last time. */
 async function syncNameImages({ force = false } = {}) {
   const files = await listNameImages();
   const signature = photosSignature(files);
