@@ -3,6 +3,8 @@
 // that document exists and hands it the stored photo list (the offscreen
 // document cannot read chrome.storage itself).
 
+import { toLatin } from './lib/latin.js';
+
 const ENGINE_PATH = 'src/engine.html';
 
 let creating = null;
@@ -46,6 +48,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   return undefined;
+});
+
+// The toolbar tooltip follows the script chosen in the popup (Cyrillic or Latin).
+async function applyLanguage() {
+  const { lang } = await chrome.storage.local.get('lang');
+  const name = chrome.runtime.getManifest().name;
+  await chrome.action.setTitle({ title: lang === 'lat' ? toLatin(name) : name });
+}
+
+applyLanguage();
+chrome.runtime.onStartup.addListener(applyLanguage);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && 'lang' in changes) applyLanguage();
 });
 
 // Only the popup can read the photos folder, so show it once after installing:

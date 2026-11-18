@@ -75,19 +75,19 @@ function describeFaces(canvas, detector) {
 
 async function learnPhoto(folder, file) {
   const response = await fetch(`/images/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`).catch(() => null);
-  if (!response?.ok) throw new Error('file is no longer there');
+  if (!response?.ok) throw new Error('фајл недостаје');
 
   let canvas;
   try {
     canvas = await toCanvas(await response.blob(), MAX_PHOTO_SIDE);
   } catch {
-    throw new Error('could not open this image');
+    throw new Error('не може да се отвори');
   }
   let faces = await describeFaces(canvas, photoDetector);
   // The detector needs some room around a face, so a tightly cropped headshot
   // finds nothing. Try again with a margin added.
   if (faces.length === 0) faces = await describeFaces(withMargin(canvas), photoDetector);
-  if (faces.length === 0) throw new Error('no face found');
+  if (faces.length === 0) throw new Error('лице није нађено');
   // A reference photo should show one person; if there are several, take the biggest.
   faces.sort((a, b) => b.detection.box.area - a.detection.box.area);
   return faces[0].descriptor;
@@ -113,7 +113,7 @@ async function learn(photos) {
       for (const file of folder.files) {
         const label = `${folder.name}/${file.name}`;
         if (!PHOTO_EXTENSIONS.test(file.name)) {
-          skipped.push({ file: label, reason: 'unsupported format (use JPG, PNG or WebP)' });
+          skipped.push({ file: label, reason: 'користи JPG, PNG или WebP' });
           continue;
         }
         try {
@@ -216,7 +216,7 @@ async function readNameImages(files) {
   const results = [];
   for (const file of files ?? []) {
     if (!PHOTO_EXTENSIONS.test(file.name)) {
-      results.push({ file: file.name, names: [], problem: 'unsupported format (use JPG, PNG or WebP)' });
+      results.push({ file: file.name, names: [], problem: 'користи JPG, PNG или WebP' });
       continue;
     }
     try {
@@ -235,9 +235,9 @@ async function readNameImages(files) {
         .split('\n')
         .map((line) => line.trim().replace(/\s+/g, ' '))
         .filter((line) => /\p{L}{3}/u.test(line));
-      results.push(names.length > 0 ? { file: file.name, names } : { file: file.name, names, problem: 'no text could be read' });
+      results.push(names.length > 0 ? { file: file.name, names } : { file: file.name, names, problem: 'текст није нађен' });
     } catch {
-      results.push({ file: file.name, names: [], problem: 'could not open this image' });
+      results.push({ file: file.name, names: [], problem: 'не може да се отвори' });
     }
   }
   return results;
