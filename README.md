@@ -1,7 +1,8 @@
-# Мутирај
+# Мутирај / Mutiraj
 
-<details open>
-<summary><strong>Ћирилица</strong></summary>
+[Ћирилица](#cirilica) · [Latinica](#latinica)
+
+<a id="cirilica"></a>
 
 <!-- cir:start -->
 
@@ -19,7 +20,7 @@
 
 Уколико додајете или замењујете слике, поново кликните на дугме **Освежи** како бисте учитали нове слике.
 
-За више особа направи по један фолдер за сваку унутар `images/`.
+За више особа направите по један фолдер за сваку унутар `images/`.
 
 ## Коришћење
 
@@ -45,13 +46,14 @@
 Ради само док је YouTube картица видљива.
 <!-- cir:end -->
 
-</details>
+---
 
-<details>
-<summary><strong>Latinica</strong></summary>
+<a id="latinica"></a>
 
 <!-- Овај део прави `pnpm readme` из ћириличног текста изнад. Не мењајте га ручно. -->
 <!-- lat:start -->
+
+# Mutiraj
 
 Ekstenzija za Brave, Vivaldi i druge Chromium pregledače. Mutira YouTube video dok je izabrana osoba na ekranu i vraća zvuk čim se osoba pomeri sa ekrana. Osobu prepoznaje po licu iz foldera `images/person/`. Sve radi lokalno na računaru.
 
@@ -67,7 +69,7 @@ Ekstenzija za Brave, Vivaldi i druge Chromium pregledače. Mutira YouTube video 
 
 Ukoliko dodajete ili zamenjujete slike, ponovo kliknite na dugme **Osveži** kako biste učitali nove slike.
 
-Za više osoba napravi po jedan folder za svaku unutar `images/`.
+Za više osoba napravite po jedan folder za svaku unutar `images/`.
 
 ## Korišćenje
 
@@ -93,4 +95,4 @@ Umesto kucanja možete takođe da staviš sliku teksta, na primer isečak ekrana
 Radi samo dok je YouTube kartica vidljiva.
 <!-- lat:end -->
 
-</details>
+[↑ Ћирилица](#cirilica)

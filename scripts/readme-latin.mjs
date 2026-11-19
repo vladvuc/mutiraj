@@ -21,7 +21,9 @@ if (source === undefined || !LATIN.test(readme)) {
   process.exit(1);
 }
 
-const latin = source
+// The Latin half starts with the README's own title, so it reads as a page of its own.
+const title = readme.match(/^# .+$/m)?.[0];
+const latin = (title ? `${title}\n\n${source.trim()}` : source.trim())
   .split(/(`[^`\n]*`)/)
   .map((part) => (part.startsWith('`') ? part : toLatin(part)))
   .join('');
